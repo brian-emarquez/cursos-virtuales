@@ -1,0 +1,91 @@
+<div class="page-head">
+  <div class="mini-stats">
+    <div class="mini-stat"><strong>{{ categorias().length }}</strong><span>categorías</span></div>
+  </div>
+  <button class="btn btn-primary" (click)="abrirNueva()">
+    <app-icon name="plus" [size]="16" /> Nueva categoría
+  </button>
+</div>
+
+<section class="card">
+  <div class="toolbar">
+    <div class="search">
+      <app-icon name="search" [size]="16" />
+      <input class="input" type="search" placeholder="Buscar categoría…"
+             [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" />
+    </div>
+    <span class="toolbar-spacer"></span>
+    <span class="result-count">{{ filtradas().length }} de {{ categorias().length }}</span>
+  </div>
+
+  @if (cargando()) {
+    <div class="grid-cats">
+      @for (i of [1, 2, 3]; track i) { <div class="skeleton" style="height: 150px"></div> }
+    </div>
+  } @else if (errorCarga()) {
+    <div class="error-banner">
+      <app-icon name="alert" /> <span>{{ errorCarga() }}</span>
+      <button class="btn btn-ghost" (click)="cargar()">Reintentar</button>
+    </div>
+  } @else if (filtradas().length === 0) {
+    <app-empty-state icono="categorias" titulo="No hay categorías"
+                     mensaje="Crea tu primera categoría o cambia el texto de búsqueda." />
+  } @else {
+    <div class="grid-cats">
+      @for (cat of filtradas(); track cat.id) {
+        <article class="cat-card">
+          <div class="cat-top">
+            <span class="avatar avatar--square">{{ cat.nombre.charAt(0) }}</span>
+            <div class="cat-actions">
+              <button class="btn-icon btn-icon--sm" (click)="abrirEditar(cat)" aria-label="Editar">
+                <app-icon name="edit" [size]="15" />
+              </button>
+              <button class="btn-icon btn-icon--sm btn-icon--danger" (click)="eliminar(cat)" aria-label="Eliminar">
+                <app-icon name="trash" [size]="15" />
+              </button>
+            </div>
+          </div>
+          <h3>{{ cat.nombre }}</h3>
+          <p>{{ cat.descripcion || 'Sin descripción' }}</p>
+          <footer>
+            <span><strong>{{ cat.totalCursos }}</strong> {{ cat.totalCursos === 1 ? 'curso' : 'cursos' }}</span>
+            <span class="dot-sep"></span>
+            <span><strong>{{ cat.cursosActivos }}</strong> {{ cat.cursosActivos === 1 ? 'activo' : 'activos' }}</span>
+          </footer>
+        </article>
+      }
+    </div>
+  }
+</section>
+
+<!-- ===== Modal crear / editar ===== -->
+<app-modal [abierto]="modalAbierto()" (cerrar)="cerrarModal()"
+           [titulo]="editando() ? 'Editar categoría' : 'Nueva categoría'"
+           subtitulo="Las categorías agrupan los cursos por área temática.">
+  <form [formGroup]="form" (ngSubmit)="guardar()" id="form-categoria" class="form-grid">
+    <div class="field full" [class.field--invalid]="invalido('nombre')">
+      <label for="nombre">Nombre *</label>
+      <input id="nombre" class="input" formControlName="nombre" placeholder="Ej. Programación" />
+      @if (invalido('nombre')) {
+        <span class="error">
+          @if (form.controls.nombre.hasError('required')) { El nombre es obligatorio }
+          @else { Máximo 100 caracteres }
+        </span>
+      }
+    </div>
+    <div class="field full" [class.field--invalid]="invalido('descripcion')">
+      <label for="descripcion">Descripción</label>
+      <textarea id="descripcion" class="textarea" formControlName="descripcion"
+                placeholder="Breve descripción de la categoría"></textarea>
+      <span class="hint">{{ form.controls.descripcion.value.length }}/255</span>
+    </div>
+  </form>
+
+  <div modal-footer>
+    <button class="btn btn-ghost" type="button" (click)="cerrarModal()">Cancelar</button>
+    <button class="btn btn-primary" type="submit" form="form-categoria" [disabled]="guardando()">
+      @if (guardando()) { <span class="spinner"></span> }
+      {{ editando() ? 'Guardar cambios' : 'Crear categoría' }}
+    </button>
+  </div>
+</app-modal>

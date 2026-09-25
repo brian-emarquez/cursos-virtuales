@@ -1,0 +1,77 @@
+<div class="shell" [class.shell--menu-abierto]="menuAbierto()">
+
+  <!-- ===== Barra lateral ===== -->
+  <aside class="sidebar">
+    <a class="brand" routerLink="/dashboard" (click)="menuAbierto.set(false)">
+      <span class="brand-logo"><app-icon name="birrete" [size]="20" /></span>
+      <span class="brand-text">
+        <strong>AulaVirtual</strong>
+        <small>Panel administrativo</small>
+      </span>
+    </a>
+
+    <nav class="nav">
+      <span class="nav-label">Menú principal</span>
+      @for (item of menu; track item.ruta) {
+        <a class="nav-item" [routerLink]="item.ruta" routerLinkActive="nav-item--activo"
+           (click)="menuAbierto.set(false)">
+          <app-icon [name]="item.icono" [size]="18" />
+          <span>{{ item.etiqueta }}</span>
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="api-status" [class]="'api-status api-status--' + api.estado()">
+        <span class="dot"></span>
+        <div>
+          <strong>
+            @switch (api.estado()) {
+              @case ('conectado') { API conectada }
+              @case ('desconectado') { API sin conexión }
+              @default { Verificando… }
+            }
+          </strong>
+          <small>localhost:8080</small>
+        </div>
+        <button class="btn-icon btn-icon--sm" (click)="api.verificar()" aria-label="Reintentar conexión">
+          <app-icon name="refresh" [size]="14" />
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" (click)="menuAbierto.set(false)"></div>
+
+  <!-- ===== Contenido ===== -->
+  <div class="main">
+    <header class="topbar">
+      <button class="btn-icon menu-toggle" (click)="menuAbierto.set(true)" aria-label="Abrir menú">
+        <app-icon name="menu" />
+      </button>
+
+      <div class="topbar-title">
+        <h1>{{ encabezado().titulo }}</h1>
+        <p>{{ encabezado().subtitulo }}</p>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="btn-icon" (click)="tema.alternar()"
+                [attr.aria-label]="tema.tema() === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'">
+          <app-icon [name]="tema.tema() === 'light' ? 'moon' : 'sun'" />
+        </button>
+        <div class="user-chip">
+          <span class="avatar avatar--sm">AD</span>
+          <span class="user-name">Administrador</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<app-toast-container />
+<app-confirm-dialog />

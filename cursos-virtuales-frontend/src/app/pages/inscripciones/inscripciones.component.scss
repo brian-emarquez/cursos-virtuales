@@ -1,0 +1,14 @@
+.resumen-curso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+
+  strong { display: block; }
+  small { color: var(--text-secondary); }
+  .precio { font-size: 18px; font-weight: 700; color: var(--primary); white-space: nowrap; }
+}

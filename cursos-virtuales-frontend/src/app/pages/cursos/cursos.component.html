@@ -1,0 +1,201 @@
+<div class="page-head">
+  <div class="mini-stats">
+    <div class="mini-stat"><strong>{{ cursos().length }}</strong><span>cursos en total</span></div>
+    <div class="mini-stat"><strong>{{ totalActivos() }}</strong><span>activos</span></div>
+    <div class="mini-stat"><strong>{{ cursos().length - totalActivos() }}</strong><span>inactivos</span></div>
+  </div>
+  <button class="btn btn-primary" (click)="abrirNuevo()" [disabled]="categorias().length === 0">
+    <app-icon name="plus" [size]="16" /> Nuevo curso
+  </button>
+</div>
+
+<section class="card">
+  <!-- ===== Filtros ===== -->
+  <div class="toolbar">
+    <div class="search">
+      <app-icon name="search" [size]="16" />
+      <input class="input" type="search" placeholder="Buscar por título o instructor…"
+             [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" />
+    </div>
+
+    <select class="select" [value]="filtroCategoria() ?? ''" (change)="cambiarCategoria($any($event.target).value)"
+            aria-label="Filtrar por categoría">
+      <option value="">Todas las categorías</option>
+      @for (cat of categorias(); track cat.id) {
+        <option [value]="cat.id">{{ cat.nombre }}</option>
+      }
+    </select>
+
+    <select class="select" [value]="filtroNivel() ?? ''" (change)="cambiarNivel($any($event.target).value)"
+            aria-label="Filtrar por nivel">
+      <option value="">Todos los niveles</option>
+      @for (n of niveles; track n.valor) {
+        <option [value]="n.valor">{{ n.etiqueta }}</option>
+      }
+    </select>
+
+    <div class="segmented" role="tablist">
+      <button [class.activo]="filtroEstado() === 'todos'" (click)="filtroEstado.set('todos')">Todos</button>
+      <button [class.activo]="filtroEstado() === 'activos'" (click)="filtroEstado.set('activos')">Activos</button>
+      <button [class.activo]="filtroEstado() === 'inactivos'" (click)="filtroEstado.set('inactivos')">Inactivos</button>
+    </div>
+
+    <span class="toolbar-spacer"></span>
+    @if (hayFiltros()) {
+      <button class="btn btn-ghost" (click)="limpiarFiltros()"><app-icon name="x" [size]="14" /> Limpiar</button>
+    }
+    <span class="result-count">{{ filtrados().length }} de {{ cursos().length }}</span>
+  </div>
+
+  <!-- ===== Tabla ===== -->
+  @if (cargando()) {
+    <div class="skeleton-rows">
+      @for (i of [1, 2, 3, 4, 5]; track i) { <div class="skeleton"></div> }
+    </div>
+  } @else if (errorCarga()) {
+    <div class="error-banner">
+      <app-icon name="alert" /> <span>{{ errorCarga() }}</span>
+      <button class="btn btn-ghost" (click)="cargar()">Reintentar</button>
+    </div>
+  } @else if (filtrados().length === 0) {
+    <app-empty-state icono="cursos" titulo="No se encontraron cursos"
+                     mensaje="Prueba con otros filtros o crea un curso nuevo." />
+  } @else {
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Curso</th>
+            <th>Categoría</th>
+            <th>Nivel</th>
+            <th class="num">Duración</th>
+            <th class="num">Precio</th>
+            <th>Estado</th>
+            <th class="acciones"><span class="sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (curso of filtrados(); track curso.id) {
+            <tr [class.fila-inactiva]="!curso.activo">
+              <td>
+                <div class="cell-main">
+                  <span class="avatar avatar--square">{{ iniciales(curso.titulo) }}</span>
+                  <div>
+                    <strong>{{ curso.titulo }}</strong>
+                    <small>{{ curso.instructor }}</small>
+                  </div>
+                </div>
+              </td>
+              <td><span class="chip">{{ curso.categoriaNombre }}</span></td>
+              <td>
+                <span class="badge" [class]="'badge badge--' + curso.nivel.toLowerCase()">
+                  {{ etiquetaNivel(curso.nivel) }}
+                </span>
+              </td>
+              <td class="num">{{ curso.duracionHoras }} h</td>
+              <td class="num">
+                @if (curso.precio === 0) { <span class="gratis">Gratis</span> }
+                @else { {{ curso.precio | currency: 'PEN' : 'symbol-narrow' }} }
+              </td>
+              <td>
+                <label class="switch" [attr.aria-label]="curso.activo ? 'Desactivar curso' : 'Activar curso'">
+                  <input type="checkbox" [checked]="curso.activo" (change)="alternarActivo(curso)" />
+                  <span class="track"></span>
+                  <span class="text-secondary">{{ curso.activo ? 'Activo' : 'Inactivo' }}</span>
+                </label>
+              </td>
+              <td class="acciones">
+                <button class="btn-icon btn-icon--sm" (click)="abrirEditar(curso)" aria-label="Editar">
+                  <app-icon name="edit" [size]="15" />
+                </button>
+                <button class="btn-icon btn-icon--sm btn-icon--danger" (click)="eliminar(curso)" aria-label="Eliminar">
+                  <app-icon name="trash" [size]="15" />
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+
+<!-- ===== Modal crear / editar ===== -->
+<app-modal [abierto]="modalAbierto()" (cerrar)="modalAbierto.set(false)" [ancho]="640"
+           [titulo]="editando() ? 'Editar curso' : 'Nuevo curso'"
+           subtitulo="Completa la información del curso virtual.">
+  <form [formGroup]="form" (ngSubmit)="guardar()" id="form-curso" class="form-grid">
+
+    <div class="field full" [class.field--invalid]="invalido('titulo')">
+      <label for="titulo">Título *</label>
+      <input id="titulo" class="input" formControlName="titulo" placeholder="Ej. Spring Boot desde cero" />
+      @if (invalido('titulo')) { <span class="error">El título es obligatorio (máx. 150 caracteres)</span> }
+    </div>
+
+    <div class="field full">
+      <label for="descripcion">Descripción</label>
+      <textarea id="descripcion" class="textarea" formControlName="descripcion"
+                placeholder="¿Qué aprenderá el estudiante?"></textarea>
+    </div>
+
+    <div class="field" [class.field--invalid]="invalido('instructor')">
+      <label for="instructor">Instructor *</label>
+      <input id="instructor" class="input" formControlName="instructor" placeholder="Nombre del docente" />
+      @if (invalido('instructor')) { <span class="error">El instructor es obligatorio</span> }
+    </div>
+
+    <div class="field" [class.field--invalid]="invalido('categoriaId')">
+      <label for="categoria">Categoría *</label>
+      <select id="categoria" class="select" formControlName="categoriaId">
+        @for (cat of categorias(); track cat.id) {
+          <option [ngValue]="cat.id">{{ cat.nombre }}</option>
+        }
+      </select>
+      @if (invalido('categoriaId')) { <span class="error">Selecciona una categoría</span> }
+    </div>
+
+    <div class="field" [class.field--invalid]="invalido('precio')">
+      <label for="precio">Precio *</label>
+      <div class="input-prefix">
+        <span>S/</span>
+        <input id="precio" class="input" type="number" step="0.01" min="0" formControlName="precio" placeholder="0.00" />
+      </div>
+      @if (invalido('precio')) { <span class="error">Ingresa un precio válido (0 = gratis)</span> }
+      @else { <span class="hint">Usa 0 para cursos gratuitos</span> }
+    </div>
+
+    <div class="field" [class.field--invalid]="invalido('duracionHoras')">
+      <label for="duracion">Duración (horas) *</label>
+      <input id="duracion" class="input" type="number" min="1" formControlName="duracionHoras" placeholder="20" />
+      @if (invalido('duracionHoras')) { <span class="error">Debe ser mayor a 0</span> }
+    </div>
+
+    <div class="field full">
+      <label>Nivel *</label>
+      <div class="nivel-picker">
+        @for (n of niveles; track n.valor) {
+          <label class="nivel-opcion" [class.seleccionado]="form.controls.nivel.value === n.valor">
+            <input type="radio" formControlName="nivel" [value]="n.valor" />
+            <span class="badge" [class]="'badge badge--' + n.valor.toLowerCase()">{{ n.etiqueta }}</span>
+          </label>
+        }
+      </div>
+    </div>
+
+    <div class="field full">
+      <label class="switch">
+        <input type="checkbox" formControlName="activo" />
+        <span class="track"></span>
+        <span>Curso activo (visible para inscripciones)</span>
+      </label>
+    </div>
+  </form>
+
+  <div modal-footer>
+    <button class="btn btn-ghost" type="button" (click)="modalAbierto.set(false)">Cancelar</button>
+    <button class="btn btn-primary" type="submit" form="form-curso" [disabled]="guardando()">
+      @if (guardando()) { <span class="spinner"></span> }
+      {{ editando() ? 'Guardar cambios' : 'Crear curso' }}
+    </button>
+  </div>
+</app-modal>

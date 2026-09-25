@@ -1,0 +1,188 @@
+@if (errorCarga()) {
+  <section class="card">
+    <div class="error-banner">
+      <app-icon name="alert" /> <span>{{ errorCarga() }}</span>
+      <button class="btn btn-ghost" (click)="cargar()">Reintentar</button>
+    </div>
+  </section>
+} @else {
+
+  <!-- ===== Bienvenida ===== -->
+  <div class="welcome">
+    <div>
+      <h2>Bienvenido de nuevo</h2>
+      <p>{{ hoy | date: "EEEE d 'de' MMMM, y" }} · Esto es lo que pasa en tu plataforma</p>
+    </div>
+    <button class="btn btn-ghost" (click)="cargar()" [disabled]="cargando()">
+      <app-icon name="refresh" [size]="15" /> Actualizar
+    </button>
+  </div>
+
+  <!-- ===== KPIs ===== -->
+  <div class="kpis">
+    <article class="card kpi">
+      <div class="kpi-icon kpi-icon--1"><app-icon name="cursos" [size]="20" /></div>
+      <span class="kpi-label">Cursos activos</span>
+      @if (cargando()) { <div class="skeleton kpi-skel"></div> } @else {
+        <strong class="kpi-value">{{ cursosActivos() }}</strong>
+        <span class="kpi-foot">de {{ cursos().length }} cursos en el catálogo</span>
+      }
+    </article>
+
+    <article class="card kpi">
+      <div class="kpi-icon kpi-icon--2"><app-icon name="estudiantes" [size]="20" /></div>
+      <span class="kpi-label">Estudiantes</span>
+      @if (cargando()) { <div class="skeleton kpi-skel"></div> } @else {
+        <strong class="kpi-value">{{ estudiantes().length }}</strong>
+        <span class="kpi-foot">{{ promedioCursosPorEstudiante() | number: '1.1-1' }} cursos por estudiante</span>
+      }
+    </article>
+
+    <article class="card kpi">
+      <div class="kpi-icon kpi-icon--3"><app-icon name="inscripciones" [size]="20" /></div>
+      <span class="kpi-label">Inscripciones activas</span>
+      @if (cargando()) { <div class="skeleton kpi-skel"></div> } @else {
+        <strong class="kpi-value">{{ inscripcionesActivas() }}</strong>
+        <span class="kpi-foot">
+          <span class="kpi-good">{{ tasaFinalizacion() | number: '1.0-0' }}%</span> de finalización
+        </span>
+      }
+    </article>
+
+    <article class="card kpi">
+      <div class="kpi-icon kpi-icon--4"><app-icon name="money" [size]="20" /></div>
+      <span class="kpi-label">Ingresos estimados</span>
+      @if (cargando()) { <div class="skeleton kpi-skel"></div> } @else {
+        <strong class="kpi-value">{{ ingresos() | currency: 'PEN' : 'symbol-narrow' : '1.2-2' }}</strong>
+        <span class="kpi-foot">de {{ inscripcionesVigentes().length }} inscripciones vigentes</span>
+      }
+    </article>
+  </div>
+
+  @if (!cargando()) {
+    <!-- ===== Fila 1: estado + top cursos ===== -->
+    <div class="grid grid--1-2">
+      <section class="card">
+        <header class="card-header">
+          <div>
+            <h3>Estado de inscripciones</h3>
+            <p>Distribución de todas las matrículas</p>
+          </div>
+        </header>
+        <div class="card-body">
+          @if (inscripciones().length === 0) {
+            <app-empty-state icono="inscripciones" titulo="Sin datos" mensaje="Aún no hay inscripciones." />
+          } @else {
+            <div class="donut">
+              <app-chart [config]="graficoEstados()" [alto]="200" etiqueta="Inscripciones por estado" />
+              <div class="donut-center">
+                <strong>{{ inscripciones().length }}</strong>
+                <span>total</span>
+              </div>
+            </div>
+            <ul class="legend">
+              @for (e of porEstado(); track e.valor) {
+                <li>
+                  <span class="legend-dot" [style.background]="'var(' + e.colorVar + ')'"></span>
+                  <span class="legend-name">{{ e.etiqueta }}</span>
+                  <span class="legend-value">{{ e.cantidad }}</span>
+                  <span class="legend-pct">{{ e.porcentaje | number: '1.0-0' }}%</span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </section>
+
+      <section class="card">
+        <header class="card-header">
+          <div>
+            <h3>Cursos más populares</h3>
+            <p>Top 5 por inscripciones vigentes</p>
+          </div>
+          <a class="link" routerLink="/cursos">Ver cursos <app-icon name="arrow-right" [size]="14" /></a>
+        </header>
+        <div class="card-body">
+          <app-chart [config]="graficoTopCursos()" [alto]="280" etiqueta="Cursos con más inscritos" />
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== Fila 2: categorías + ingresos ===== -->
+    <div class="grid grid--2">
+      <section class="card">
+        <header class="card-header">
+          <div>
+            <h3>Cursos por categoría</h3>
+            <p>Tamaño del catálogo en cada área</p>
+          </div>
+        </header>
+        <div class="card-body">
+          <app-chart [config]="graficoCategorias()" [alto]="240" etiqueta="Cursos por categoría" />
+        </div>
+      </section>
+
+      <section class="card">
+        <header class="card-header">
+          <div>
+            <h3>Ingresos por categoría</h3>
+            <p>Suma de precios de inscripciones vigentes</p>
+          </div>
+        </header>
+        <div class="card-body">
+          <app-chart [config]="graficoIngresos()" [alto]="240" etiqueta="Ingresos por categoría" />
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== Fila 3: recientes + niveles ===== -->
+    <div class="grid grid--2-1">
+      <section class="card">
+        <header class="card-header">
+          <div>
+            <h3>Inscripciones recientes</h3>
+            <p>Últimas matrículas registradas</p>
+          </div>
+          <a class="link" routerLink="/inscripciones">Ver todas <app-icon name="arrow-right" [size]="14" /></a>
+        </header>
+        @if (recientes().length === 0) {
+          <app-empty-state icono="inscripciones" titulo="Sin inscripciones" mensaje="Aún no hay matrículas." />
+        } @else {
+          <ul class="activity">
+            @for (i of recientes(); track i.id) {
+              <li>
+                <span class="avatar avatar--sm">{{ iniciales(i.estudianteNombre) }}</span>
+                <div class="activity-text">
+                  <strong>{{ i.estudianteNombre }}</strong>
+                  <span>{{ i.cursoTitulo }}</span>
+                </div>
+                <span class="badge" [class]="'badge badge--' + i.estado.toLowerCase()">{{ i.estado | titlecase }}</span>
+                <time>{{ i.fechaInscripcion | date: 'dd MMM, HH:mm' }}</time>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="card">
+        <header class="card-header">
+          <div>
+            <h3>Catálogo por nivel</h3>
+            <p>{{ cursos().length }} cursos en total</p>
+          </div>
+        </header>
+        <div class="card-body niveles">
+          @for (n of porNivel(); track n.valor) {
+            <div class="nivel-row">
+              <div class="nivel-top">
+                <span class="badge" [class]="'badge badge--' + n.valor.toLowerCase()">{{ n.etiqueta }}</span>
+                <span class="nivel-num"><strong>{{ n.cantidad }}</strong> · {{ n.porcentaje | number: '1.0-0' }}%</span>
+              </div>
+              <div class="bar-track"><div class="bar-fill" [style.width.%]="n.porcentaje"></div></div>
+            </div>
+          }
+        </div>
+      </section>
+    </div>
+  }
+}

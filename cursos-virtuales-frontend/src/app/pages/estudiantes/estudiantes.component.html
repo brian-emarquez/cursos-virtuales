@@ -1,0 +1,123 @@
+<div class="page-head">
+  <div class="mini-stats">
+    <div class="mini-stat"><strong>{{ estudiantes().length }}</strong><span>estudiantes</span></div>
+    <div class="mini-stat"><strong>{{ conInscripciones() }}</strong><span>con cursos</span></div>
+  </div>
+  <button class="btn btn-primary" (click)="abrirNuevo()">
+    <app-icon name="plus" [size]="16" /> Nuevo estudiante
+  </button>
+</div>
+
+<section class="card">
+  <div class="toolbar">
+    <div class="search">
+      <app-icon name="search" [size]="16" />
+      <input class="input" type="search" placeholder="Buscar por nombre o email…"
+             [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" />
+    </div>
+    <span class="toolbar-spacer"></span>
+    <span class="result-count">{{ filtrados().length }} de {{ estudiantes().length }}</span>
+  </div>
+
+  @if (cargando()) {
+    <div class="skeleton-rows">
+      @for (i of [1, 2, 3, 4]; track i) { <div class="skeleton"></div> }
+    </div>
+  } @else if (errorCarga()) {
+    <div class="error-banner">
+      <app-icon name="alert" /> <span>{{ errorCarga() }}</span>
+      <button class="btn btn-ghost" (click)="cargar()">Reintentar</button>
+    </div>
+  } @else if (filtrados().length === 0) {
+    <app-empty-state icono="estudiantes" titulo="No hay estudiantes"
+                     mensaje="Registra un estudiante o cambia el texto de búsqueda." />
+  } @else {
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Estudiante</th>
+            <th>Teléfono</th>
+            <th>Registro</th>
+            <th>Inscripciones</th>
+            <th class="acciones"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of filtrados(); track e.id) {
+            <tr>
+              <td>
+                <div class="cell-main">
+                  <span class="avatar">{{ iniciales(e) }}</span>
+                  <div>
+                    <strong>{{ e.nombres }} {{ e.apellidos }}</strong>
+                    <small>{{ e.email }}</small>
+                  </div>
+                </div>
+              </td>
+              <td class="text-secondary">{{ e.telefono || '—' }}</td>
+              <td class="text-secondary">{{ e.fechaRegistro | date: 'dd MMM yyyy' }}</td>
+              <td>
+                @if (e.totalInscripciones > 0) {
+                  <a class="chip" [routerLink]="['/inscripciones']" [queryParams]="{ estudianteId: e.id }">
+                    {{ e.totalInscripciones }} {{ e.totalInscripciones === 1 ? 'curso' : 'cursos' }} →
+                  </a>
+                } @else {
+                  <span class="text-muted">Sin cursos</span>
+                }
+              </td>
+              <td class="acciones">
+                <button class="btn-icon btn-icon--sm" (click)="abrirEditar(e)" aria-label="Editar">
+                  <app-icon name="edit" [size]="15" />
+                </button>
+                <button class="btn-icon btn-icon--sm btn-icon--danger" (click)="eliminar(e)" aria-label="Eliminar">
+                  <app-icon name="trash" [size]="15" />
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+
+<app-modal [abierto]="modalAbierto()" (cerrar)="modalAbierto.set(false)"
+           [titulo]="editando() ? 'Editar estudiante' : 'Nuevo estudiante'"
+           subtitulo="Datos personales y de contacto del alumno.">
+  <form [formGroup]="form" (ngSubmit)="guardar()" id="form-estudiante" class="form-grid">
+    <div class="field" [class.field--invalid]="invalido('nombres')">
+      <label for="nombres">Nombres *</label>
+      <input id="nombres" class="input" formControlName="nombres" placeholder="Ej. Carlos" />
+      @if (invalido('nombres')) { <span class="error">Los nombres son obligatorios</span> }
+    </div>
+    <div class="field" [class.field--invalid]="invalido('apellidos')">
+      <label for="apellidos">Apellidos *</label>
+      <input id="apellidos" class="input" formControlName="apellidos" placeholder="Ej. Ramírez" />
+      @if (invalido('apellidos')) { <span class="error">Los apellidos son obligatorios</span> }
+    </div>
+    <div class="field full" [class.field--invalid]="invalido('email')">
+      <label for="email">Email *</label>
+      <input id="email" class="input" type="email" formControlName="email" placeholder="correo@ejemplo.com" />
+      @if (invalido('email')) {
+        <span class="error">
+          @if (form.controls.email.hasError('required')) { El email es obligatorio }
+          @else { Formato de email inválido }
+        </span>
+      }
+    </div>
+    <div class="field full" [class.field--invalid]="invalido('telefono')">
+      <label for="telefono">Teléfono</label>
+      <input id="telefono" class="input" formControlName="telefono" placeholder="999 888 777" />
+      @if (invalido('telefono')) { <span class="error">Solo números, espacios, + o - (máx. 20)</span> }
+    </div>
+  </form>
+
+  <div modal-footer>
+    <button class="btn btn-ghost" type="button" (click)="modalAbierto.set(false)">Cancelar</button>
+    <button class="btn btn-primary" type="submit" form="form-estudiante" [disabled]="guardando()">
+      @if (guardando()) { <span class="spinner"></span> }
+      {{ editando() ? 'Guardar cambios' : 'Registrar estudiante' }}
+    </button>
+  </div>
+</app-modal>
